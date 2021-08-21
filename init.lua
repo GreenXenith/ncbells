@@ -15,8 +15,8 @@ local function traverse_bell(pos, size, dir)
 
     if size < 8 and note == 1 then -- Continue traversal along full bells within 8 nodes
         return traverse_bell({x = pos.x, y = pos.y + dir, z = pos.z}, size + 1, dir)
-    else -- If partial bell or no bell, return current size (increment if bell) and note (1 if no bell)
-        return size + (note and 1 or 0), note or 1
+    else -- If partial bell or no bell, return current size (increment if top bell) and note (1 if no bell)
+        return size + ((note and dir > 0) and 1 or 0), note or 1
     end
 end
 
