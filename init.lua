@@ -135,7 +135,7 @@ nodecore.register_craft({
     nodes = {
         {
             match = {
-                metal_temper_tempered = true,
+                lode_temper_tempered = true,
                 groups = {chisel = 2},
             },
             dig = true,
