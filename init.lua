@@ -91,8 +91,15 @@ for s = 1, 12 do
             end
         end,
     })
+end
 
-    -- Shave down bell to tune
+-- Split bells in (approximately) half
+for i = 1, 11 do
+    local height = 13 - i
+    local half = math.ceil(height / 2)
+    local rest = height - half
+    half = 13 - half
+    rest = 13 - rest
     nodecore.register_craft({
         label = "ncbells:tune bell",
         action = "pummel",
@@ -100,9 +107,31 @@ for s = 1, 12 do
         check = function(_, data) return data.pointed.above.y == data.pointed.under.y end,
         rate_adjust = 5,
         nodes = {
-            {match = MODNAME .. ":bell_" .. s, replace = s == 12 and "air" or MODNAME .. ":bell_" .. s + 1}
+            {match = MODNAME .. ":bell_" .. i, replace = "air"}
         },
+        items = {
+            {name = MODNAME .. ":bell_" .. half, scatter = 5},
+            {name = MODNAME .. ":bell_" .. rest, scatter = 5}
+        }
     })
+end
+
+-- Stack bells to recombine
+for i = 1, 12 do
+    for j = 1, (i == 12 and 11 or 12) do
+        local total = i + j
+        local lower = total >= 12 and 12 or total
+        local upper = total - lower
+        lower = MODNAME .. ":bell_" .. (13 - lower)
+        upper = (upper <= 0) and "air" or MODNAME .. ":bell_" .. (13 - upper)
+        nodecore.register_craft({
+            label = "ncbells:join bell",
+            nodes = {
+                {match = MODNAME .. ":bell_" .. (13 - i), replace = upper},
+                {y = -1, match = MODNAME .. ":bell_" .. (13 - j), replace = lower}
+            }
+        })
+    end
 end
 
 -- Allow hinged panels to ring bells
@@ -170,10 +199,12 @@ nodecore.register_hint("ring a glass bell with a hinged panel", "ncbells:door ri
     "group:door",
 })
 
-nodecore.register_hint("tune a glass bell", "ncbells:tune bell", {
+nodecore.register_hint("split a glass bell", "ncbells:tune bell", {
     "ncbells:chisel bells",
     "nc_lode:tool_hatchet_tempered",
 })
+
+nodecore.register_hint("join split glass bells", "ncbells:join bell", "ncbells:tune bell")
 
 nodecore.register_hint("change a glass bell's octave", "ncbells:octave bell", {
     "ncbells:chisel bells",
