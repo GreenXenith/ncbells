@@ -90,6 +90,7 @@ for s = 1, 12 do
                 nodecore.player_discover(placer, "ncbells:octave bell")
             end
         end,
+        mapcolor = {r = 139, g = 187, b = 212, a = 64},
     })
 end
 
