@@ -215,6 +215,7 @@ nodecore.register_craft({
     items = {
         {name = MODNAME .. ":bell_1 2", count = 4, scatter = 3},
     },
+    priority = 1,
 })
 
 -- Hints
