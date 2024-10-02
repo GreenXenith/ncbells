@@ -1,7 +1,20 @@
-local BELL_GAIN = 0.5
-local BELL_HEAR = 64
+local BELL_GAIN = 0.2
+local BELL_HEAR = 32
 
 local MODNAME = minetest.get_current_modname()
+
+-- Is it a hammer, and what's its level?
+local function hammer_level(item)
+    if not item.get_tool_capabilities then return 0 end
+    local x = item:get_tool_capabilities()
+    if not (x and x.groupcaps and x.groupcaps.thumpy and x.groupcaps.thumpy.times) then return 0 end
+    x = x.groupcaps.thumpy.times
+    local lv = 1
+    while x[lv] and x[lv] <= 4 do
+     lv = lv + 1
+    end
+    return lv - 2
+end
 
 -- How tall is this bell and what note is it?
 local function traverse_bell(pos, size, dir)
@@ -21,7 +34,7 @@ local function traverse_bell(pos, size, dir)
 end
 
 -- Play a note at a pos
-local function play_note(pos)
+local function play_note(pos, multiplier)
     if not minetest.get_node(pos).name:match(MODNAME .. ":bell_") then return end
 
     local size, note = traverse_bell(pos)
@@ -29,8 +42,8 @@ local function play_note(pos)
 
     minetest.sound_play("ncbells_ding", {
         pos = pos,
-        gain = BELL_GAIN,
-        max_hear_distance = BELL_HEAR,
+        gain = BELL_GAIN * multiplier,
+        max_hear_distance = BELL_HEAR * multiplier,
         pitch = (2 ^ (1 / 12)) ^ step, -- https://pages.mtu.edu/~suits/NoteFreqCalcs.html
     }, true)
 end
@@ -72,9 +85,10 @@ for s = 1, 12 do
         sunlight_propagates = true,
         sounds = sounds,
         on_punch = function(pos, node, puncher, pointed)
-            -- Hit with metal shaft to ring
-            if minetest.get_item_group(puncher:get_wielded_item():get_name(), "chisel") > 0 then
-                play_note(pos)
+            -- Hit with hammer to ring
+            local thumpyLv = hammer_level(puncher:get_wielded_item())
+            if thumpyLv > 0 then
+                play_note(pos, thumpyLv)
                 nodecore.player_discover(puncher, "ncbells:ring bell")
             end
 
@@ -91,6 +105,24 @@ for s = 1, 12 do
             end
         end,
         mapcolor = {r = 139, g = 187, b = 212, a = 64},
+    })
+
+    -- Allow hinged panels to ring bells directly (requires a backstop)
+    nodecore.register_craft({
+        label = "ncbells:door ring bell",
+        action = "pummel",
+        toolgroups = {thumpy = 1},
+        check = function(_, data)
+            return not minetest.is_player(data.crafter)
+        end,
+        nodes = {
+            {
+                match = MODNAME .. ":bell_" .. s
+            },
+        },
+        after = function(_, data)
+            play_note(data.pointed.under, minetest.get_item_group(minetest.get_node(data.pointed.above).name, "door"))
+        end,
     })
 end
 
@@ -135,24 +167,24 @@ for i = 1, 12 do
     end
 end
 
--- Allow hinged panels to ring bells
+-- Ring bell using a door and a hammer
 nodecore.register_craft({
-    label = "ncbells:door ring bell",
+    label = "ncbells:ring bell with door and hammer",
     action = "pummel",
     toolgroups = {thumpy = 1},
     check = function(_, data)
-        data.bell_pos = vector.subtract(vector.multiply(data.pointed.under, 2), data.pointed.above)
-        return not minetest.is_player(data.crafter) and minetest.get_node(data.bell_pos).name:match(MODNAME .. ":bell_")
+        data.bell_pos = data.pointed.under
+        data.hammer_pos = data.pointed.above
+        data.thumpyLv = hammer_level(nodecore.stack_get(data.hammer_pos))
+        return not minetest.is_player(data.crafter) and minetest.get_node(data.bell_pos).name:match(MODNAME .. ":bell_") and data.thumpyLv > 0
     end,
     nodes = {
         {
-            match = {
-                groups = {chisel = true},
-            }
+            match = {},
         },
     },
     after = function(_, data)
-        play_note(data.bell_pos)
+        play_note(data.bell_pos, data.thumpyLv)
     end,
 })
 
